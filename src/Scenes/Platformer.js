@@ -5,18 +5,24 @@ class Platformer extends Phaser.Scene {
 
     init() {
         // variables and settings
-        this.ACCELERATION = 400;
-        this.DRAG = 500;    // DRAG < ACCELERATION = icy slide
+        this.ACCELERATION = 300;
+        this.DRAG = 400;    // DRAG < ACCELERATION = icy slide
         this.physics.world.gravity.y = 1500;
         this.JUMP_VELOCITY = -600;
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
+        this.scrollSpeed = 2;
+        this.coinCount = 0;
+    }
+
+    preload() {
+        this.load.audio('coinSound', 'impactPlate_medium_003.ogg');
     }
 
     create() {
         // Create a new tilemap game object which uses 18x18 pixel tiles, and is
         // 45 tiles wide and 25 tiles tall.
-        this.map = this.add.tilemap("platformer-level-1", 18, 18, 45, 25);
+        this.map = this.add.tilemap("platformer-level-1", 18, 18, 120, 26);
 
         // Add a tileset to the map
         // First parameter: name we gave the tileset in Tiled
@@ -31,6 +37,8 @@ class Platformer extends Phaser.Scene {
             collides: true
         });
 
+        this.coinSound = this.sound.add('coinSound');
+
         // Find coins in the "Objects" layer in Phaser
         // Look for them by finding objects with the name "coin"
         // Assign the coin texture from the tilemap_sheet sprite sheet
@@ -43,14 +51,27 @@ class Platformer extends Phaser.Scene {
             frame: 151
         });
 
+        this.flag = this.map.createFromObjects("Objects", {
+            name: "flag",
+            key: "tilemap_sheet",
+            frame: 111
+        });
+        this.flagPole = this.map.createFromObjects("Objects", {
+            name: "flag_pole",
+            key: "tilemap_sheet",
+            frame: 131
+        });
+        
         // Since createFromObjects returns an array of regular Sprites, we need to convert 
         // them into Arcade Physics sprites (STATIC_BODY, so they don't move) 
         this.physics.world.enable(this.coins, Phaser.Physics.Arcade.STATIC_BODY);
+        this.physics.world.enable(this.flagPole, Phaser.Physics.Arcade.STATIC_BODY);
+        this.physics.world.enable(this.flag, Phaser.Physics.Arcade.STATIC_BODY);
 
         // Create a Phaser group out of the array this.coins
         // This will be used for collision detection below.
         this.coinGroup = this.add.group(this.coins);
-        
+        this.flagGroup = this.add.group(this.flagPole, this.flag);
 
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(30, 345, "platformer_characters", "tile_0000.png");
@@ -61,9 +82,14 @@ class Platformer extends Phaser.Scene {
 
         // Handle collision detection with coins
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
+            this.coinSound.play();
             obj2.destroy(); // remove coin on overlap
+            this.coinCount++; // increment coin counter
         });
-        
+
+        this.physics.add.overlap(my.sprite.player, this.flagGroup, (obj1, obj2) => {
+            this.scene.start("endScene", { coinCount: this.coinCount });
+        });
 
         // set up Phaser-provided cursor key input
         cursors = this.input.keyboard.createCursorKeys();
@@ -78,7 +104,7 @@ class Platformer extends Phaser.Scene {
 
         // TODO: Add movement vfx here
         my.vfx.walking = this.add.particles(0, 0, "kenny-particles", {
-            frame: ['smoke_03.png', 'smoke_09.png'],
+            frame: ['flare_01.png'],
             // TODO: Try: add random: true
             scale: {start: 0.03, end: 0.1},
             // TODO: Try: maxAliveParticles: 8,
@@ -91,13 +117,15 @@ class Platformer extends Phaser.Scene {
 
         // TODO: add camera code here
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-        this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25); // (target, [,roundPixels][,lerpX][,lerpY])
+        this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25, -500, 0); // (target, [,roundPixels][,lerpX][,lerpY])
+        // this.cameras.main.setFollowOffset(0, -100);
         this.cameras.main.setDeadzone(50, 50);
         this.cameras.main.setZoom(this.SCALE);
 
     }
 
     update() {
+
         if(cursors.left.isDown) {
             my.sprite.player.setAccelerationX(-this.ACCELERATION);
             my.sprite.player.resetFlip();

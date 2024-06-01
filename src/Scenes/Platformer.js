@@ -16,6 +16,7 @@ class Platformer extends Phaser.Scene {
     }
 
     preload() {
+        this.load.setPath("./assets/");
         this.load.audio('coinSound', 'impactPlate_medium_003.ogg');
     }
 
@@ -36,7 +37,7 @@ class Platformer extends Phaser.Scene {
         this.groundLayer.setCollisionByProperty({
             collides: true
         });
-
+        this.load.audio('coinSound', 'impactPlate_medium_003.ogg');
         this.coinSound = this.sound.add('coinSound');
 
         // Find coins in the "Objects" layer in Phaser
